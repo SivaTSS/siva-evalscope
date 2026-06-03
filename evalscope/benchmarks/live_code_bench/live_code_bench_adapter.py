@@ -7,6 +7,7 @@ from evalscope.api.evaluator import TaskState
 from evalscope.api.messages.chat_message import ChatMessageUser
 from evalscope.api.metric import Score
 from evalscope.api.registry import register_benchmark
+from evalscope.benchmarks.pruning import PRUNING_EXTRA_PARAMS, ManifestPruningMixin
 from evalscope.constants import Tags
 from evalscope.utils.io_utils import convert_normal_types
 from evalscope.utils.logger import get_logger
@@ -138,6 +139,9 @@ class LiveCodeBenchAdapter(DefaultDataAdapter):
             input=[ChatMessageUser(content=full_prompt)],
             target='',
             metadata={
+                'question_content': question_content,
+                'platform': record.get('platform'),
+                'difficulty': record.get('difficulty'),
                 'evaluation_sample': record['evaluation_sample'],
                 'contest_date': record['contest_date']
             }
@@ -222,3 +226,60 @@ class LiveCodeBenchAdapter(DefaultDataAdapter):
 
         score.main_score_name = 'acc'
         return score
+
+
+@register_benchmark(
+    BenchmarkMeta(
+        name='live_code_bench_pruned',
+        pretty_name='Live-Code-Bench Pruned',
+        tags=[Tags.CODING],
+        description="""
+Pruned LiveCodeBench v5 for fast customer go/no-go checks. Selection uses the
+metadata_stratified_coreset strategy: task metadata and prompt-feature coverage.
+Shipped model scores are not used for row selection.
+""",
+        dataset_id='evalscope/livecodebench_code_generation_lite_parquet',
+        subset_list=['release_v5'],
+        default_subset='release_v5',
+        metric_list=['acc'],
+        aggregation='mean_and_pass_at_k',
+        eval_split='test',
+        prompt_template=
+        '### Question:\n{question_content}\n\n{format_prompt} ### Answer: (use the provided format with backticks)\n\n',
+        review_timeout=6,
+        extra_params={
+            'start_date': {
+                'type': 'str | null',
+                'description': 'Filter problems starting from this date (YYYY-MM-DD). Null keeps all.',
+                'value': None
+            },
+            'end_date': {
+                'type': 'str | null',
+                'description': 'Filter problems up to this date (YYYY-MM-DD). Null keeps all.',
+                'value': None
+            },
+            'debug': {
+                'type': 'bool',
+                'description': 'Enable verbose debug logging and bypass certain safety checks.',
+                'value': False
+            },
+            **{
+                **PRUNING_EXTRA_PARAMS,
+                'prune_ratio': {
+                    'type': 'float',
+                    'description': 'Fraction of LiveCodeBench v5 to keep when no manifest is supplied.',
+                    'value': 0.30,
+                },
+            },
+        },
+        sandbox_config={
+            'image': 'python:3.11-slim',
+            'tools_config': {
+                'shell_executor': {},
+                'python_executor': {}
+            }
+        },
+    )
+)
+class PrunedLiveCodeBenchAdapter(ManifestPruningMixin, LiveCodeBenchAdapter):
+    pass

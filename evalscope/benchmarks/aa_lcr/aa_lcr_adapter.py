@@ -12,6 +12,7 @@ from evalscope.api.evaluator import TaskState
 from evalscope.api.messages import ChatMessageUser
 from evalscope.api.metric import Score
 from evalscope.api.registry import register_benchmark
+from evalscope.benchmarks.pruning import PRUNING_EXTRA_PARAMS, ManifestPruningMixin
 from evalscope.constants import DEFAULT_EVALSCOPE_CACHE_DIR, Tags
 from evalscope.utils.logger import get_logger
 
@@ -235,3 +236,40 @@ class AALCRAdapter(DefaultDataAdapter):
         }
         score.main_score_name = 'acc'
         return score
+
+
+@register_benchmark(
+    BenchmarkMeta(
+        name='aa_lcr_pruned',
+        pretty_name='AA-LCR Pruned',
+        tags=[Tags.KNOWLEDGE, Tags.REASONING, Tags.LONG_CONTEXT],
+        description="""
+Pruned AA-LCR for fast long-context checks. Selection uses the
+metadata_stratified_coreset strategy over shipped task metadata: question text,
+source URLs, and input token coverage. Shipped judge scores are validation only.
+""",
+        dataset_id='evalscope/AA-LCR',
+        metric_list=['acc'],
+        few_shot_num=0,
+        train_split=None,
+        eval_split='test',
+        prompt_template=PROMPT_TEMPLATE,
+        extra_params={
+            'text_dir': {
+                'type': 'str | null',
+                'description': 'Local directory containing extracted AA-LCR text files; if null will auto-download & extract.',
+                'value': None
+            },
+            **{
+                **PRUNING_EXTRA_PARAMS,
+                'prune_ratio': {
+                    'type': 'float',
+                    'description': 'Fraction of AA-LCR to keep when no manifest is supplied.',
+                    'value': 0.56,
+                },
+            },
+        }
+    )
+)
+class PrunedAALCRAdapter(ManifestPruningMixin, AALCRAdapter):
+    pass

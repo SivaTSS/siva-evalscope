@@ -20,6 +20,17 @@
 <a href="https://evalscope.readthedocs.io/zh-cn/latest/"> 📖  中文文档</a> &nbsp ｜ &nbsp <a href="https://evalscope.readthedocs.io/en/latest/"> 📖  English Documentation</a>
 <p>
 
+## Task 2 Challenge Extension
+
+This fork was developed for Task 2 against evalscope commit
+`de7b0b3f08c617f48a00ef09f7169dc74212a6d9`.
+
+Added benchmarks:
+
+- `live_code_bench_pruned`
+- `aa_lcr_pruned`
+- `mmmu_encoder_probe`
+
 
 > ⭐ If you like this project, please click the "Star" button in the upper right corner to support us. Your support is our motivation to move forward!
 
